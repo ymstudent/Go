@@ -1,3 +1,4 @@
+//slice的就地修改：在函数调用过程中，底层数组发送了变化
 package main
 
 import "fmt"
