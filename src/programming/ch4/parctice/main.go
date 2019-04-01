@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"unicode"
 )
 
@@ -25,6 +28,8 @@ func main()  {
 	fmt.Println([]rune(s4), []byte(s4)) //[25105 32 32 32 29233 32 32 32 20320] [230 136 145 32 32 32 231 136 177 32 32 32 228 189 160]
 	res2 := noContinueEmpty([]rune(s4))
 	fmt.Println(res2)
+
+	wordfreq()
 }
 
 //4.3重写reverse函数，使用数组指针作为参数
@@ -83,3 +88,40 @@ func noContinueEmpty(s []rune) []rune {
 //4.7修改reverse函数，在不重新分配内存的情况下。来反转一个UTF-8编码的字符串中的字符元素，传入的参数是该字符串对应的字节slice类型
 //TODO
 //没想出来，不能重新分配内存就表示slice指向的底层数组不能变
+
+//4.8修改charcount的代码来统计字母、数字和其他在Unicode分类中的字符数量
+func charcount()  {
+	in := bufio.NewReader(os.Stdin)
+	var letter, number int
+	for {
+		r, _, err := in.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if unicode.IsLetter(r) { //字母
+			letter++
+		}
+		if unicode.IsNumber(r) { //数字
+			number++
+		}
+		//其余的类型可以参考graphic.go包，这里就不一一写出
+	}
+	fmt.Printf("letter: %d\n", letter)
+	fmt.Printf("number: %d\n", number)
+}
+
+//4.9编写一个wordfreq来汇总输入文本文件中的每个单词出现的次数
+func wordfreq()  {
+	scanner := bufio.NewScanner(bufio.NewReader(os.Stdin))
+	scanner.Split(bufio.ScanWords) //将文本行按单词分割
+	counts := make(map[string]int)
+	for scanner.Scan() {
+		counts[scanner.Text()]++
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	}
+	for i, v := range counts {
+		fmt.Printf("%s\t%d\n", i, v)
+	}
+}
