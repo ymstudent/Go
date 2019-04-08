@@ -1,10 +1,10 @@
 package main
 
 import (
-	"html/template"
 	"log"
 	"os"
 	"programming/ch4/github"
+	"text/template"
 	"time"
 )
 
