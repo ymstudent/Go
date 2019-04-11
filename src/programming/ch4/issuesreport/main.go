@@ -1,3 +1,4 @@
+//获取GO项目的issue列表并以字符串模版的形式显示
 package main
 
 import (
