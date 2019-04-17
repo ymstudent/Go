@@ -33,7 +33,7 @@ func foreachNode(n *html.Node, pre, post func(n *html.Node)) {
 		pre(n)
 	}
 
-	for c := n.FirstChild; c != nil; c = n.NextSibling {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		foreachNode(c, pre, post)
 	}
 
