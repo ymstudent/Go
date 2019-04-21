@@ -45,17 +45,17 @@ func Extract(url string) ([]string, error) {
 			}
 		}
 	}
-	foreachNode(doc, visitNode, nil)
+	ForeachNode(doc, visitNode, nil)
 	return links, nil
 }
 
-func foreachNode(n *html.Node, pre, post func(n *html.Node)) {
+func ForeachNode(n *html.Node, pre, post func(n *html.Node)) {
 	if pre != nil {
 		pre(n)
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		foreachNode(c, pre, post)
+		ForeachNode(c, pre, post)
 	}
 
 	if post != nil {
