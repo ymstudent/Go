@@ -18,7 +18,7 @@ func (v Values) Add(key, value string)  {
 	v[key] = append(v[key], value)
 }
 
-//方法和函数一样，对引用本身作任何改变，都不会在调用者身上产生作用，所以下面的m即使调用Setnil，m的值也未改变
+// 方法和函数一样，对引用本身作任何改变，都不会在调用者身上产生作用，所以下面的m即使调用Setnil，m的值也未改变
 func (v Values) Setnil() {
 	v = nil
 }
