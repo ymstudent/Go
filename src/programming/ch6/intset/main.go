@@ -18,7 +18,7 @@ func (s *IntSet) Has(x int) bool {
 }
 
 //Add添加非负数x到集合中
-func (s *IntSet) Add(x int)  {
+func (s *IntSet) Add(x int) {
 	word, bit := x/64, uint(x%64)
 	for word >= len(s.words) {
 		s.words = append(s.words, 0)
@@ -27,7 +27,7 @@ func (s *IntSet) Add(x int)  {
 }
 
 //UnionWith将会对s和t做并集将结果存在s中
-func (s *IntSet) UnionWith(t *IntSet)  {
+func (s *IntSet) UnionWith(t *IntSet) {
 	for i, tword := range t.words {
 		if i < len(s.words) {
 			s.words[i] |= tword
@@ -58,7 +58,7 @@ func (s *IntSet) String() string {
 	return buf.String()
 }
 
-func main()  {
+func main() {
 	var x, y IntSet
 	x.Add(1)
 	x.Add(144)
