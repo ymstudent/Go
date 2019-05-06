@@ -57,4 +57,7 @@ func (x byArtist) Swap(i, j int)  {
 func main()  {
 	sort.Sort(byArtist(tracks))
 	printTracks(tracks)
+	//反向排序
+	sort.Sort(sort.Reverse(byArtist(tracks)))
+	printTracks(tracks)
 }
