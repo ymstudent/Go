@@ -7,21 +7,25 @@ import (
 
 //表示一个变量，如x
 type Var string
+
 //表示一个数字常量，如3.14
 type literal float64
+
 //表示一元操作符表达式，如-x
 type unary struct {
 	op rune //+,-中的一个
-	x Expr
+	x  Expr
 }
+
 //表示二元操作符表达式，如x+y
 type binary struct {
-	op rune //+,-,*,/中的一个
+	op   rune //+,-,*,/中的一个
 	x, y Expr
 }
+
 //表示函数调用表达式，如sin(x)
 type call struct {
-	fn string //pow, sin, sqrt中的一个
+	fn   string //pow, sin, sqrt中的一个
 	args []Expr
 }
 
@@ -52,13 +56,13 @@ func (u unary) Eval(env Env) float64 {
 func (b binary) Eval(env Env) float64 {
 	switch b.op {
 	case '+':
-		return b.x.Eval(env)+b.y.Eval(env)
+		return b.x.Eval(env) + b.y.Eval(env)
 	case '-':
-		return b.x.Eval(env)-b.y.Eval(env)
+		return b.x.Eval(env) - b.y.Eval(env)
 	case '*':
-		return b.x.Eval(env)*b.y.Eval(env)
+		return b.x.Eval(env) * b.y.Eval(env)
 	case '/':
-		return b.x.Eval(env)/b.y.Eval(env)
+		return b.x.Eval(env) / b.y.Eval(env)
 	}
 	panic(fmt.Sprintf("unsupported binary operator: %q", b.op))
 }
