@@ -18,7 +18,7 @@ func main()  {
 			log.Print(err) //例如，连接终止
 			continue
 		}
-		handleConn(conn) //一次处理一个连接
+		go handleConn(conn) //并发处理连接
 	}
 }
 
