@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto"
 	"crypto/md5"
 	"crypto/rand"
@@ -14,56 +13,81 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
 func check(e error) {
 	if e != nil {
-		panic(e)
+		fmt.Println(e)
 	}
 }
 
 
 func main() {
-	counter := make(chan int)
+	start := time.Now()
 	csvFile, err := os.Open("./dm.csv")
 	check(err)
-
 	defer csvFile.Close()
 
 	csvReader := csv.NewReader(csvFile)
-
-	for {
-		row, err := csvReader.Read()
-		if err == io.EOF {
-			break
-		}
-		check(err)
-		go sendMsg(row, counter)
+	arr, _ := csvReader.ReadAll()
+	counter := make(chan string)
+	var wg sync.WaitGroup //工作goroutine的个数
+	for _, row := range arr {
+		wg.Add(1)
+		go func(row []string){  //通过添加显式参数，确保当go语句执行时，使用当前row值（参考5.6.1内部匿名函数中获取循环变量的问题）
+			params := getQuery(row)
+			counter <- params
+		}(row)
 	}
+	go func() {
+		wg.Wait()
+		close(counter) //安全关闭通道
+	}()
+	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
+	var s []string
+	for v := range counter {
+		s = append(s, v)
+	}
+	fmt.Println(len(s))
+	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
 }
 
-func sendMsg(row []string, counter chan int)  {
+func sendMsg(row []string) (success bool, err error) {
 	query := getQuery(row)
 	queryUrl := "https://openapi.alipay.com/gateway.do?"+query
-	fmt.Println(queryUrl)
 	resp, err := http.Get(queryUrl)
-	check(err)
+	if err != nil {
+		err := fmt.Errorf("请求失败:%s", err)
+		return false, err
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		panic(fmt.Errorf("请求失败,错误码:%d", resp.StatusCode))
+		err := fmt.Errorf("请求失败,错误码:%d", resp.StatusCode)
+		return false, err
 	}
-	scanner := bufio.NewScanner(resp.Body)
-	for i := 0; scanner.Scan() && i < 5; i++ {
-		fmt.Println(scanner.Text())
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err := fmt.Errorf("读取返回结果失败:%s", err)
+		return false, err
 	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
+	var smsresp map[string]interface{}
+	if err := json.Unmarshal(body, &smsresp); err != nil {
+		err := fmt.Errorf("JSON解析失败:%s", err)
+		return false, err
+	}
+	res := smsresp["alipay_pass_instance_add_response"].(map[string]interface{})
+	if res["code"] == "10000" {
+		return true, nil
+	} else {
+		err := fmt.Errorf("JSON解析失败:%s", res)
+		return false, err
 	}
 }
 
@@ -73,11 +97,11 @@ func getQuery(row []string) string {
 	aa["out_trade_no"] = strings.Trim(row[1], "`")
 
 	bb := make(map[string]string)
-	bb["channelID"] = "123456"
+	bb["channelID"] = ""
 	bb["serialNumber"] = md5V(aa["out_trade_no"])
 
 	body := make(map[string]string)
-	body["tpl_id"] = "123456"
+	body["tpl_id"] = ""
 	tpl_params, err := json.Marshal(bb)
 	check(err)
 	body["tpl_params"] = string(tpl_params)
@@ -89,7 +113,7 @@ func getQuery(row []string) string {
 	data := url.Values{}
 	biz_content, err := json.Marshal(body)
 	check(err)
-	data.Set("app_id", "123456")
+	data.Set("app_id", "")
 	data.Set("biz_content", string(biz_content))
 	data.Set("charset", "utf-8")
 	data.Set("format", "JSON")
