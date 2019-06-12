@@ -42,6 +42,7 @@ func main() {
 	for _, row := range arr {
 		wg.Add(1)
 		go func(row []string){  //通过添加显式参数，确保当go语句执行时，使用当前row值（参考5.6.1内部匿名函数中获取循环变量的问题）
+			defer wg.Done()
 			params := getQuery(row)
 			counter <- params
 		}(row)
