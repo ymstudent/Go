@@ -87,6 +87,9 @@ func main() {
 
 func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err error) {
 	query, err := getQuery(row, tplId, pk)
+	if err != nil {
+		err = fmt.Errorf("获取请求参数失败: %s", err)
+	}
 	queryUrl := "https://openapi.alipay.com/gateway.do?" + query
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //跳过https证书验证
@@ -96,22 +99,22 @@ func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err 
 	}
 	resp, err := c.Get(queryUrl)
 	if err != nil {
-		err = fmt.Errorf("请求错误:%s", err)
+		err = fmt.Errorf("请求错误: %s", err)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("请求失败,错误码:%d", resp.StatusCode)
+		err = fmt.Errorf("请求失败,错误码: %d", resp.StatusCode)
 		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("读取返回结果失败:%s", err)
+		err = fmt.Errorf("读取返回结果失败: %s", err)
 		return
 	}
 	var smsresp map[string]interface{}
 	if err := json.Unmarshal(body, &smsresp); err != nil {
-		err = fmt.Errorf("JSON解析失败:%s", err)
+		err = fmt.Errorf("JSON解析失败: %s", err)
 		return
 	}
 	res := smsresp["alipay_pass_instance_add_response"].(map[string]interface{})
