@@ -25,27 +25,31 @@ import (
 
 func check(e error) {
 	if e != nil {
-		fmt.Println(e)
+		panic(e)
 	}
 }
 
 func main() {
+	//解析参数
 	filePath := flag.String("f", "", "文件路径")
 	tplId := flag.String("t", "", "模版ID")
 	flag.Parse()
 
+	//解析密钥
+	pk, err := ParsePrivateKey()
+	check(err)
+
+	//读取文件
 	start := time.Now()
 	csvFile, err := os.Open(*filePath)
 	check(err)
 	defer csvFile.Close()
-
-	var wg sync.WaitGroup
 	csvReader := csv.NewReader(csvFile)
-	arr, _ := csvReader.ReadAll()
-	counter := make(chan bool, len(arr)+1)
-	limit := make(chan bool, 1000) //用来限制goroutine数量
-	pk, err := ParsePrivateKey()
+	arr, err := csvReader.ReadAll()
 	check(err)
+	var wg sync.WaitGroup
+	sendRes := make(chan bool, len(arr)+1) //创建一个足够大的缓冲通道，存放所有请求结果
+	limit := make(chan bool, 1000) //用来限制goroutine数量
 
 	for _, row := range arr {
 		wg.Add(1)
@@ -56,20 +60,20 @@ func main() {
 			if err != nil {
 				fmt.Println(err)
 			}
-			counter <- success
+			sendRes <- success
 			<-limit
 		}(row)
 	}
 
 	go func() {
 		wg.Wait()
-		close(counter) //安全关闭通道
+		close(sendRes) //安全关闭通道
 	}()
 
 	//统计成功与失败数量
 	successNum := 0
 	failNum := 0
-	for v := range counter {
+	for v := range sendRes {
 		if v {
 			successNum++
 		} else {
@@ -82,7 +86,7 @@ func main() {
 }
 
 func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err error) {
-	query := getQuery(row, tplId, pk)
+	query, err := getQuery(row, tplId, pk)
 	queryUrl := "https://openapi.alipay.com/gateway.do?" + query
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //跳过https证书验证
@@ -92,23 +96,23 @@ func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err 
 	}
 	resp, err := c.Get(queryUrl)
 	if err != nil {
-		err := fmt.Errorf("请求错误:%s", err)
-		return false, err
+		err = fmt.Errorf("请求错误:%s", err)
+		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("请求失败,错误码:%d", resp.StatusCode)
-		return false, err
+		err = fmt.Errorf("请求失败,错误码:%d", resp.StatusCode)
+		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err := fmt.Errorf("读取返回结果失败:%s", err)
-		return false, err
+		err = fmt.Errorf("读取返回结果失败:%s", err)
+		return
 	}
 	var smsresp map[string]interface{}
 	if err := json.Unmarshal(body, &smsresp); err != nil {
-		err := fmt.Errorf("JSON解析失败:%s", err)
-		return false, err
+		err = fmt.Errorf("JSON解析失败:%s", err)
+		return
 	}
 	res := smsresp["alipay_pass_instance_add_response"].(map[string]interface{})
 	if res["code"] == "10000" {
@@ -118,17 +122,25 @@ func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err 
 	}
 }
 
-func getQuery(row []string, tplId string, pk *rsa.PrivateKey) string {
+func getQuery(row []string, tplId string, pk *rsa.PrivateKey) (query string, err error) {
 	recognitionInfoMap := make(map[string]string)
 	recognitionInfoMap["partner_id"] = strings.Trim(row[0], "`")
 	recognitionInfoMap["out_trade_no"] = strings.Trim(row[1], "`")
-	recognitionInfo, _ := json.Marshal(recognitionInfoMap)
+	recognitionInfo, err := json.Marshal(recognitionInfoMap)
+	if err != nil {
+		err = fmt.Errorf("recognitionInfoMap JSON加密失败: %s", err)
+		return
+	}
 
 	tplParamsMap := make(map[string]int)
 	tplParamsMap["channelID"] = 123456
 	r := rand2.New(rand2.NewSource(time.Now().Unix()))
 	tplParamsMap["serialNumber"] = r.Intn(100)
-	tplParams, _ := json.Marshal(tplParamsMap)
+	tplParams, err := json.Marshal(tplParamsMap)
+	if err != nil {
+		err = fmt.Errorf("tplParamsMap JSON加密失败: %s", err)
+		return
+	}
 
 	body := make(map[string]string)
 	body["tpl_id"] = tplId
@@ -146,20 +158,36 @@ func getQuery(row []string, tplId string, pk *rsa.PrivateKey) string {
 	data.Set("sign_type", "RSA2")
 	data.Set("timestamp", time.Now().Format("2006-01-02 15:04:05"))
 	data.Set("version", "1.0")
-	signContentBytes, _ := url.QueryUnescape(data.Encode())
-	sign := sign([]byte(signContentBytes), pk)
+
+	signContentBytes, err := url.QueryUnescape(data.Encode())
+	if err != nil {
+		err = fmt.Errorf("url QueryUnescape失败: %s", err)
+		return
+	}
+
+	sign, err := sign([]byte(signContentBytes), pk)
+	if err != nil {
+		err = fmt.Errorf("签名加密失败: %s", err)
+		return
+	}
+
 	data.Set("sign", sign)
-	return data.Encode()
+	query = data.Encode()
+	return
 }
 
-func sign(data []byte, pk *rsa.PrivateKey) string {
+func sign(data []byte, pk *rsa.PrivateKey) (sign string, err error) {
 	h := sha256.New()
 	hType := crypto.SHA256
 	h.Write(data)
 	d := h.Sum(nil)
 	bs, err := rsa.SignPKCS1v15(rand.Reader, pk, hType, d)
-	check(err)
-	return base64.StdEncoding.EncodeToString(bs)
+	if err != nil {
+		err = fmt.Errorf("rsa SignPKCS1v15失败: %s", err)
+		return
+	}
+	sign = base64.StdEncoding.EncodeToString(bs)
+	return
 }
 
 func ParsePrivateKey() (pk *rsa.PrivateKey, err error) {
