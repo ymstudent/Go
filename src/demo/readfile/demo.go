@@ -46,50 +46,65 @@ func main() {
 	defer csvFile.Close()
 	csvReader := csv.NewReader(csvFile)
 	arr, err := csvReader.ReadAll()
+	fmt.Println(len(arr))
 	check(err)
-	var wg sync.WaitGroup
-	sendRes := make(chan bool, len(arr)+1) //创建一个足够大的缓冲通道，存放所有请求结果
-	limit := make(chan bool, 1000) //用来限制goroutine数量
-
-	for _, row := range arr {
-		wg.Add(1)
-		limit <- true
-		go func(row []string) { //通过添加显式参数，确保当go语句执行时，使用当前row值（参考5.6.1内部匿名函数中获取循环变量的问题）
-			defer wg.Done()
-			success, err := sendMsg(row, *tplId, pk)
-			if err != nil {
-				fmt.Println(err)
-			}
-			sendRes <- success
-			<-limit
-		}(row)
-	}
-
-	go func() {
-		wg.Wait()
-		close(sendRes) //安全关闭通道
-	}()
-
+	paramsChan := make(chan string, 200)
 	//统计成功与失败数量
+	var mutex = &sync.Mutex{}
 	successNum := 0
 	failNum := 0
-	for v := range sendRes {
-		if v {
-			successNum++
-		} else {
-			failNum++
+
+	var wg sync.WaitGroup
+	go func() {
+		for _, row := range arr {
+			wg.Add(1)
+			go func(row []string) { //通过添加显式参数，确保当go语句执行时，使用当前row值（参考5.6.1内部匿名函数中获取循环变量的问题）
+				defer wg.Done()
+				params, err := getQuery(row, *tplId, pk)
+				if err != nil {
+					fmt.Println(err)
+				}
+				paramsChan <- params
+			}(row)
 		}
+		wg.Wait()
+		close(paramsChan) //安全关闭通道
+	}()
+
+	var wg2 sync.WaitGroup
+	limit := make(chan bool, 100)
+	for s := range paramsChan {
+		wg2.Add(1)
+		limit <- true
+		go func(s string) {
+			defer wg2.Done()
+			res, err := sendMsg(s)
+			if err != nil {
+				fmt.Println(err)
+				mutex.Lock()
+				failNum++
+				mutex.Unlock()
+			}
+			if res {
+				mutex.Lock()
+				successNum++
+				mutex.Unlock()
+			} else {
+				mutex.Lock()
+				failNum++
+				mutex.Unlock()
+			}
+			<-limit
+		}(s)
 	}
+	wg2.Wait()
+
 	fmt.Printf("发券成功:%d\n", successNum)
 	fmt.Printf("发券失败:%d\n", failNum)
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
 }
 
-func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err error) {
-	query, err := getQuery(row, tplId, pk)
-	if err != nil {
-		err = fmt.Errorf("获取请求参数失败: %s", err)
-	}
+func sendMsg(query string) (success bool, err error) {
 	queryUrl := "https://openapi.alipay.com/gateway.do?" + query
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //跳过https证书验证
@@ -113,7 +128,7 @@ func sendMsg(row []string, tplId string, pk *rsa.PrivateKey) (success bool, err 
 		return
 	}
 	var smsresp map[string]interface{}
-	if err := json.Unmarshal(body, &smsresp); err != nil {
+	if err = json.Unmarshal(body, &smsresp); err != nil {
 		err = fmt.Errorf("JSON解析失败: %s", err)
 		return
 	}
