@@ -51,23 +51,24 @@ func main() {
 	var failNum int64
 	var successNum int64
 	var wg sync.WaitGroup
-	for s := range paramsChan {
+	for i := 0; i < 200; i++ {
 		wg.Add(1)
-		go func(s string) {
+		go func() {
 			defer wg.Done()
-			res := true
-			//res, err := sendMsg(s)
-			if res {
-				atomic.AddInt64(&successNum, 1)
-			} else {
-				/*if err != nil {
-					fmt.Println(err)
-				}*/
-				atomic.AddInt64(&failNum, 1)
+			for s := range paramsChan {
+				res, err := sendMsg(s)
+				if res {
+					atomic.AddInt64(&successNum, 1)
+				} else {
+					if err != nil {
+						fmt.Println(err)
+					}
+					atomic.AddInt64(&failNum, 1)
+				}
 			}
-		}(s)
+		}()
 	}
-	wg.Wait()
+    wg.Wait()
 
 	fmt.Printf("发券成功:%d\n", successNum)
 	fmt.Printf("发券失败:%d\n", failNum)
@@ -79,7 +80,7 @@ func readFile(filePath string, tplId string, pk *rsa.PrivateKey, paramsChan chan
 	check(err)
 	defer csvFile.Close()
 	csvReader := csv.NewReader(csvFile)
-	limit := make(chan struct{}, runtime.NumCPU())
+	limit := make(chan struct{}, runtime.NumCPU()) //计数信号量
 	for {
 		row, err := csvReader.Read()
 		if err == io.EOF {
