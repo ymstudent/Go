@@ -12,7 +12,7 @@ import (
 
 var verbose = flag.Bool("v", false, "show verbose progress message")
 
-func main()  {
+func main() {
 	start := time.Now()
 	flag.Parse()
 	roots := flag.Args()
@@ -36,7 +36,7 @@ func main()  {
 loop:
 	for {
 		select {
-		case size, ok := <- fileSizes:
+		case size, ok := <-fileSizes:
 			if !ok {
 				break loop
 			}
@@ -50,11 +50,11 @@ loop:
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
 }
 
-func printDiskUsage(nfiles, nbytes int64)  {
+func printDiskUsage(nfiles, nbytes int64) {
 	fmt.Printf("%d files %.1f GB\n", nfiles, float64(nbytes)/1e9)
 }
 
-func walkDir(dir string, fileSizes chan <- int64)  {
+func walkDir(dir string, fileSizes chan<- int64) {
 	for _, entry := range dirents(dir) {
 		if entry.IsDir() {
 			subdir := filepath.Join(dir, entry.Name())
