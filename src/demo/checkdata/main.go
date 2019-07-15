@@ -33,9 +33,9 @@ func main() {
 	dbMap := make(map[string]*sql.DB)
 	tableChan := make(chan string)
 
-	dbMap["o2o"], err = connectMySQL("root", "1qaz2wsx!QAZ", "39.105.33.118", "3306", "ymblog")
+	dbMap["o2o"], err = connectMySQL("", "", "", "3306", "ymblog")
 	check(err)
-	dbMap["o2oNew"], err = connectMySQL("root", "1qaz2wsx!QAZ", "39.105.33.118", "3306", "ymblog")
+	dbMap["o2oNew"], err = connectMySQL("", "", "", "3306", "ymblog")
 	check(err)
 
 	defer func() {
