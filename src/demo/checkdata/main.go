@@ -47,6 +47,15 @@ func main() {
 		}
 	}()
 
+	defer func() {
+		for db := range dbMap {
+			err := dbMap[db].Close()
+			if err != nil {
+				fmt.Printf("关闭%s失败, error : %s", db, err)
+			}
+		}
+	}()
+
 	go selectAllTable(dbMap["o2o"], tableChan)
 
 	var tableCount int64
@@ -55,9 +64,16 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			atomic.AddInt64(&tableCount, 1)
 			for tableName := range tableChan {
-				checkId(dbMap, tableName)
+				atomic.AddInt64(&tableCount, 1)
+				err := checkId(dbMap, tableName)
+				if err != nil {
+					//fmt.Println(err)
+					err := checkCount(dbMap, tableName)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
 			}
 		}()
 	}
@@ -80,22 +96,21 @@ func selectAllTable(db *sql.DB, tableChan chan<- string) {
 			fmt.Printf("scan error: %s\r\n", err)
 			continue
 		}
-		fmt.Println(table)
 		tableChan <- table
 	}
 	close(tableChan)
 }
 
 //确认新旧库中各表最大ID是否相同
-func checkId(dbMap map[string]*sql.DB, tableName string) {
+func checkId(dbMap map[string]*sql.DB, tableName string) (err error) {
 	var o2oMaxId, o2oNewMaxId int64
-	err := dbMap["o2o"].QueryRow("select max(id) from ?", tableName).Scan(&o2oMaxId)
+	err = dbMap["o2o"].QueryRow("select max(id) from " + tableName).Scan(&o2oMaxId)
 	if err != nil {
 		err = fmt.Errorf("读取o2o.%s最大ID出错：%s", tableName, err)
 		return
 	}
 
-	err = dbMap["o2oNew"].QueryRow("select max(id) from ?", tableName).Scan(&o2oNewMaxId)
+	err = dbMap["o2oNew"].QueryRow("select max(id) from " + tableName).Scan(&o2oNewMaxId)
 	if err != nil {
 		err = fmt.Errorf("读取o2o.%s最大ID出错：%s", tableName, err)
 		return
@@ -106,4 +121,27 @@ func checkId(dbMap map[string]*sql.DB, tableName string) {
 	} else {
 		fmt.Printf("%s maxId are different, o2o is %d, o2oNew is %d\n", tableName, o2oMaxId, o2oNewMaxId)
 	}
+	return
+}
+
+//确认新旧库中各表count是否相同
+func checkCount(dbMap map[string]*sql.DB, tableName string) (err error) {
+	var o2oCount, o2oNewCount int64
+	err = dbMap["o2o"].QueryRow("select count(*) from " + tableName).Scan(&o2oCount)
+	if err != nil {
+		err = fmt.Errorf("统计o2o.%s数据出错：%s", tableName, err)
+		return
+	}
+	err = dbMap["o2oNew"].QueryRow("select count(*) from " + tableName).Scan(&o2oNewCount)
+	if err != nil {
+		err = fmt.Errorf("统计o2o.%s数据出错：%s", tableName, err)
+		return
+	}
+
+	if o2oCount == o2oNewCount {
+		fmt.Printf("%s countNum is the same\n", tableName)
+	} else {
+		fmt.Printf("%s countNum are different, o2o is %d, o2oNew is %d\n", tableName, o2oCount, o2oNewCount)
+	}
+	return
 }
