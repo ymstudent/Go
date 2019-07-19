@@ -19,3 +19,14 @@ func Balance() int {
 	defer mu.Unlock()
 	return balance
 }
+
+func Withdraw(amount int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	Deposit(-amount)
+	if Balance() < 0 {
+		Deposit(amount)
+		return false	//余额不足
+	}
+	return true
+}
