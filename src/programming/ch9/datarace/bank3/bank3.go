@@ -9,7 +9,7 @@ var (
 )
 
 func Deposit(amount int)  {
-	mu.Lock()	//加锁
+	mu.Lock()			//加锁
 	defer mu.Unlock()	//释放锁
 	balance = balance + amount
 }
