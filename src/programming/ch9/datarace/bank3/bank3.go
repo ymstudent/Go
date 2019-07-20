@@ -20,6 +20,8 @@ func Balance() int {
 	return balance
 }
 
+
+//错误的实现：无法对一个已经上锁的互斥量再上锁。这里会导致死锁
 func Withdraw(amount int) bool {
 	mu.Lock()
 	defer mu.Unlock()
@@ -30,3 +32,26 @@ func Withdraw(amount int) bool {
 	}
 	return true
 }
+
+//优化：将Deposit函数拆分：一个不导出的deposit，以及一个导出的Deposit2(专门用来执行上锁，解锁操作)。
+func Deposit2(amount int)  {
+	mu.Lock()
+	defer mu.Unlock()
+	deposit(amount)
+}
+
+func deposit(amount int)  {
+	balance += amount
+}
+
+func Withdraw2(amount int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	deposit(-amount)
+	if balance < 0 {
+		deposit(amount)
+		return false
+	}
+	return true
+}
+
