@@ -6,6 +6,7 @@ import "sync"
 var (
 	mu sync.Mutex
 	balance int
+	rwMu sync.RWMutex
 )
 
 func Deposit(amount int)  {
@@ -53,5 +54,13 @@ func Withdraw2(amount int) bool {
 		return false
 	}
 	return true
+}
+
+//优化：使用读写互斥锁，使读请求可以并发进行(ps:只有多数goroutine都在获取读锁且锁竞争激烈的情况下RWMutex才有优势。
+// 因为它的开销比普通互斥锁大，所以在竞争不激烈的时候它比普通锁还慢)
+func Balance2() int {
+	rwMu.RLock()
+	defer rwMu.RUnlock()
+	return balance
 }
 
