@@ -3,6 +3,8 @@ package memo1_test
 import (
 	"fmt"
 	"gowork/programming/ch9/memo1"
+	"gowork/programming/ch9/memo2"
+	"gowork/programming/ch9/memo3"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -40,6 +42,43 @@ func TestMemo(t *testing.T)  {
 
 func TestMemoConcurrent(test *testing.T)  {
 	m := memo1.New(httpGetBody)
+	var n sync.WaitGroup
+	for _, url := range incomingURLs() {
+		n.Add(1)
+		go func(url string) {
+			defer n.Done()
+			start := time.Now()
+			value, err := m.Get(url)
+			if err != nil {
+				log.Print(err)
+			}
+			fmt.Printf("%s, %s, %d bytes\n", url, time.Since(start), len(value.([]byte)))
+		}(url)
+	}
+	n.Wait()
+}
+
+
+func TestMemo2Concurrent(test *testing.T)  {
+	m := memo2.New(httpGetBody)
+	var n sync.WaitGroup
+	for _, url := range incomingURLs() {
+		n.Add(1)
+		go func(url string) {
+			defer n.Done()
+			start := time.Now()
+			value, err := m.Get(url)
+			if err != nil {
+				log.Print(err)
+			}
+			fmt.Printf("%s, %s, %d bytes\n", url, time.Since(start), len(value.([]byte)))
+		}(url)
+	}
+	n.Wait()
+}
+
+func TestMemo3Concurrent(test *testing.T)  {
+	m := memo3.New(httpGetBody)
 	var n sync.WaitGroup
 	for _, url := range incomingURLs() {
 		n.Add(1)
