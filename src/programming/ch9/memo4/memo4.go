@@ -1,3 +1,4 @@
+//通过共享变量上锁来构建并发结构
 package memo4
 
 import "sync"
