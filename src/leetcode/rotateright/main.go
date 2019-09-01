@@ -16,15 +16,28 @@ func main() {
 }
 
 func rotaetRight(head *ListNode, k int) *ListNode {
-	pointer := head
-	for i := 0; i < k; i++ {
-		for pointer.Next.Next != nil {
-			pointer.Val = pointer.Next.Val
-			pointer.Next = pointer.Next.Next
-		}
-		pointer.Next.Next = head
-		pointer.Next = nil
-		head = pointer
+	if head == nil {
+		return nil
 	}
-	return pointer
+
+	if head.Next == nil {
+		return head
+	}
+
+	oldList := head
+	n := 1
+	for oldList.Next != nil {
+		oldList = oldList.Next
+		n++
+	}
+
+	oldList.Next = head
+
+	newList := head
+	for i := 0; i < n - k % n - 1; i++ {
+		newList = newList.Next
+	}
+	newHead := newList.Next
+	newList.Next = nil
+	return newHead
 }
