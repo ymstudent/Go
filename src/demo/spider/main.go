@@ -62,7 +62,7 @@ func (spider Spider) GetV2EX() []map[string]interface{} {
 	return allData
 }
 
-
+//抓取知乎
 func (spider Spider) GetZhiHu() []map[string]interface{} {
 	url := "https://www.zhihu.com/hot"
 	timeOut := time.Duration(5 * time.Second)
