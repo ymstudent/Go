@@ -102,6 +102,46 @@ func (spider Spider) GetZhiHu() []map[string]interface{} {
 	return allData
 }
 
+func (spider Spider) GetHuPu() []map[string]interface{} {
+	var allData []map[string]interface{}
+	url := "https://bbs.hupu.com/all-gambia"
+	timeOut := time.Duration(5 * time.Second)
+	client := &http.Client{
+		Timeout:timeOut,
+	}
+
+	var Body io.Reader
+	request, err := http.NewRequest("GET", url, Body)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+
+	request.Header.Add("cookie", `_dacevid3=2762cd3f.a0e0.2d82.7f4b.465bf2d87b2b; __gads=ID=8ea0353ce6a5e604:T=1564304070:S=ALNI_MbyxkLdavVvYxxq_bGgYFS8E1OPmw; _HUPUSSOID=6888bdc7-0cbe-4bfb-ab42-dcf33bb00909; acw_tc=76b20f6015762909611003634e49681626e0f21d69f7bc6bed60300ec745e7; _CLT=b0c2a05996d8b48b354e1fa4ddfc1fef; u=59791349|6JmO5omRSlIwOTE2OTAzODE1|c949|fbc38e6f125b5c142fa3d7a89f67d053|125b5c142fa3d7a8|aHVwdV9iNzA2Mjk5NWQ2YmVjNGFj; us=d00a4e8d59d63ee520b7811cc17799ab8b78d6a6ad246fbe09a3333f1503e9e6738764ac52d7953cf68f3c8e5cdb163128aaddd79dab6671868c59ec808b72fc; ua=31569934; PHPSESSID=6a5103eb0828848b27da7e041c3fd844; _cnzz_CV30020080=buzi_cookie%7C2762cd3f.a0e0.2d82.7f4b.465bf2d87b2b%7C-1; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%2216c90b892e2bf-0bf641a103ead5-38637701-1440000-16c90b892e3df%22%2C%22%24device_id%22%3A%2216c90b892e2bf-0bf641a103ead5-38637701-1440000-16c90b892e3df%22%2C%22props%22%3A%7B%22%24latest_traffic_source_type%22%3A%22%E5%BC%95%E8%8D%90%E6%B5%81%E9%87%8F%22%2C%22%24latest_referrer%22%3A%22https%3A%2F%2Fmo.fish%2Fmain%2Fhome%2Fhot%22%2C%22%24latest_referrer_host%22%3A%22mo.fish%22%2C%22%24latest_search_keyword%22%3A%22%E6%9C%AA%E5%8F%96%E5%88%B0%E5%80%BC%22%7D%7D; UM_distinctid=16f85be09d542e-03979c831bc09a-1d336b5a-13c680-16f85be09d68bb; Hm_lvt_3d37bd93521c56eba4cc11e2353632e2=1578496822; Hm_lpvt_3d37bd93521c56eba4cc11e2353632e2=1578496822; Hm_lvt_39fc58a7ab8a311f2f6ca4dc1222a96e=1577021178,1578496693,1578496805,1578496833; _fmdata=2tzKYiaN7nEtlq%2FPE90sOpu95aWJPWUeIs9%2B%2F9Yy9jdPZiOiHsPZcQn%2BgatZtEXt4CQMLfODXxgq38VJrcV%2BZs9H78wBJCjSsiAhPXO0vyQ%3D; __dacevst=ad8acee6.80575057|1578498919081; Hm_lpvt_39fc58a7ab8a311f2f6ca4dc1222a96e=1578497119`)
+	request.Header.Add("user-agent", `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML`)
+	res, err := client.Do(request)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+	defer res.Body.Close()
+
+	document, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+
+	document.Find(".bbsHotPit .list").First().Find(".textSpan").Each(func(i int, selection *goquery.Selection) {
+		url, boolUrl := selection.Find("a").Attr("href")
+		text, _ := selection.Find("a").Attr("title")
+		if boolUrl {
+			allData = append(allData, map[string]interface{}{"title":text, "url":"https://bbs.hupu.com"+url})
+		}
+	})
+	return allData
+}
+
 func SaveDataToJson(data interface{}) string {
 	Message := HotData{}
 	Message.Code = 0
@@ -126,7 +166,7 @@ func ExecGetData(spider Spider) {
 var group sync.WaitGroup
 
 func main() {
-	spider := Spider{DataType: "ZhiHu"}
+	spider := Spider{DataType: "HuPu"}
 	start := time.Now()
 	group.Add(1)
 	go ExecGetData(spider)
