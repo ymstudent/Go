@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 )
@@ -142,6 +143,47 @@ func (spider Spider) GetHuPu() []map[string]interface{} {
 	return allData
 }
 
+func (spider Spider) GetGithub() []map[string]interface{} {
+	var allData []map[string]interface{}
+
+	url := "https://github.com/trending"
+	timeOut := time.Duration(5 * time.Second)
+	client := &http.Client{
+		Timeout:timeOut,
+	}
+
+	var Body io.Reader
+	request, err := http.NewRequest("GET", url, Body)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+
+	request.Header.Add("cookie", `_octo=GH1.1.1197201112.1563518143; _ga=GA1.2.2103263047.1563518145; _device_id=bdd17a569cbadf10478c9999c3673f4c; user_session=_bZNm-H_tP3XtvBkaN5hTD-KP2QbvkWJkmI_hFZVl4KXuQth; __Host-user_session_same_site=_bZNm-H_tP3XtvBkaN5hTD-KP2QbvkWJkmI_hFZVl4KXuQth; logged_in=yes; dotcom_user=ymstudent; tz=Asia%2FShanghai; has_recent_activity=1; _gh_sess=TFkvTEpZekNnUitZSzdzem03VS9HLzQ4RGZVMkdETmI4WTJEU0QxTXAzOFdTcFhxNjgwOGRLYlhaZndGeDVjSGlEWjVLMEdCZjFSRlI4MHdmSzZqdEpiRG16a2dFRHdad0RKZldZN1lwN1ZKWnh5Qm96UXlZRWdIOHU0ckZ2MUxEdzdzTXFNM0lSNlRGWlV1OEhYSDNsSjNUcWx6TWVJWnhHb3MyTkdqak1hdS9yVWVWakYzNldCZmU5U0wxVWdWeGpsWlFaZElGSjJlNXdjYStuelMwekh2dUVuMy9ucWtTc21Lcy9iYlYwYzRZMmVQSHVYVjdxVGxFR1E2YmtrUVlUWDB4WHRIdjVqUURxd2ZvVlJTc1UzcmVxTmw0QTBMWS9XbnFjRENBaVJyY1RkbkZPMzFwTGtRRlBReGR5eXFzWVUxbWd2ajdMT0NQU0Ewb2NXZTdyMDNwTS8zcTJDOG1ZZ2ZlNnBTMWhaTzh0ZnluSWhrNG9TTHA0WWp3MFk4dTA4V2Q4OUhpZjZpbnVYeFdlQnRtZ21CZ3dBcFo1Qm9oTnczc2RQT3NxMkR5KzZTU1REeThxU1BBMDZJRHkrdStoOGM2b0ZIL09yOENZclNaSDNFSU1ScE5uWXZ4RVZibXpWZ3dWUUlKRkNtQmxDNEVacXN6UUpkdk04U05TZVhJdnlTYW56cDY4aGJ0eVlJczJ2U2t0TDNBb25HMnVhQ1ova2JGVm41VFBReENVNlRkQWgrUFNzZUZhQ1FIUmhWZ1AyWXZneTFodG5aeEhhZmsyUzdWY05rREdCbHJxRDlCL1Fyd2ZWU2dnQUo1Zm9xMlhnRG5YaFQ0TytxZUszRGFZbzhOWUdzWEpTbEgyVE05dGtMVWFBVFFDWjliQ1l5MmxiaStMRkdyT0RyMFgzckRXV2VZTmhVWFNMTEk5RFhBSmpxdVBtM1pXR3pJcmdCdDMvRHhzZ01hb3BDcUJyRjkzalhWUHFtb2dabU1ScUNmaXhzU21iQU02dE1BZEJETE5HUkRRbkt4TFBRcXBxeWlYV2RvWHlyekhST0JtMlpBclVKQ1JyblU5T1lUQ2c2QU1QU3VLVU44TEk5UzJ1T2Z4SzhnNDBVdUlmRjQrVU1ObWIxRHgrcEtQczVPT0J1RHE4TTFZME5MV0c2bW45dGhpcEpub1I4ckhKVGZCVmo2NGFlRFZkVTVER2RnVHlZTlRnR2g3Q09yeG43OEZRMXRmN2N2SlNPYmtCOUZOZVJwMndQOUFyM0VMOGo2TUNvYXlzWWNLZTluWkRFRERLR2pueGhUQWhoR2xmR3dLb3lrZ2p4T3lVWWllVmVDNXliOWtXQlo1UzVFc1d0a3diSGhna2JHL3IrSU95bUUrVUJGbXZ0Z2pCNzE3RExRL1pXUTAwMDB5azczMytOS1hOdzVhL0xhdFg4bTMvaGNxaW45MDVpVk5kbUxIb1RjZUFwcm9zb2ZycGY2MEpESFBlM0VRT3d3RGJ4YjR2d2FrQ0pucldvM3dEZHFFRXo4Wk5keWpNUWk5TWgvYlNOdGhtaFVmc2FEZzV3SkxvckFsTHErenRyc2FXakFDdz0tLWZac2VnVEJheUJwQVhCY203SCtVd1E9PQ%3D%3D--7f385eada410f979251421b3609ff8f036c2abdd`)
+	request.Header.Add("user-agent", `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36`)
+	res, err := client.Do(request)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+	defer res.Body.Close()
+
+	document, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+
+	document.Find(".Box .Box-row").Each(func(i int, selection *goquery.Selection) {
+		url, boolUrl := selection.Find("a").Attr("href")
+		text := selection.Find(".text-gary").Text()
+		if boolUrl {
+			allData = append(allData, map[string]interface{}{"title": strings.Trim(text, ""), "url":"https://github.com/"+url})
+		}
+	})
+	return allData
+}
+
 func SaveDataToJson(data interface{}) string {
 	Message := HotData{}
 	Message.Code = 0
@@ -166,7 +208,7 @@ func ExecGetData(spider Spider) {
 var group sync.WaitGroup
 
 func main() {
-	spider := Spider{DataType: "HuPu"}
+	spider := Spider{DataType: "Github"}
 	start := time.Now()
 	group.Add(1)
 	go ExecGetData(spider)
