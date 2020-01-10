@@ -184,6 +184,49 @@ func (spider Spider) GetGithub() []map[string]interface{} {
 	return allData
 }
 
+
+func (spider Spider) GetWeiBo() []map[string]interface{} {
+	var allData []map[string]interface{}
+
+	url := "https://s.weibo.com/top/summary"
+	timeOut := time.Duration(5 * time.Second)
+	client := &http.Client{
+		Timeout: timeOut,
+	}
+
+	var Body io.Reader
+	request, err := http.NewRequest("GET", url, Body)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+
+	request.Header.Add("cookie", `login_sid_t=3f8064130fa4ba4b1199d4a9d5f6dccf; cross_origin_proto=SSL; _s_tentry=www.google.com; UOR=www.laruence.com,widget.weibo.com,www.google.com; Apache=3177346419711.533.1578569869517; SINAGLOBAL=3177346419711.533.1578569869517; ULV=1578569869523:1:1:1:3177346419711.533.1578569869517:; SUB=_2A25zE2D-DeRhGeNN6FcW-SvKyj6IHXVQadU2rDV8PUNbmtAfLWHYkW9NSajz_puShZryZOJgPYOZJTQ5vZtIeICs; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WWDZ3T8cfEsXDH5KZxarglU5JpX5KzhUgL.Fo-0e0-N1K-ceKz2dJLoIEXLxK-LBo5L1K2LxK-LBo.LBoBLxKnLBKqL1h2LxKnLBoML1K2LxK-L1K-L122t; SUHB=06ZFTnrQ1N2PhY; ALF=1610105901; SSOLoginState=1578569902; wvr=6; webim_unReadCount=%7B%22time%22%3A1578569911198%2C%22dm_pub_total%22%3A0%2C%22chat_group_client%22%3A0%2C%22allcountNum%22%3A0%2C%22msgbox%22%3A0%7D; WBStorage=42212210b087ca50|undefined`)
+	request.Header.Add("user-agent", `Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36`)
+
+	res, err := client.Do(request)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+	defer res.Body.Close()
+
+	document, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		fmt.Println("抓取" + spider.DataType + "失败")
+		return allData
+	}
+	document.Find("#pl_top_realtimehot .ranktop").Each(func(i int, selection *goquery.Selection) {
+		url, boolUrl := selection.Parent().Find(".td-02 a").Attr("href")
+		text := selection.Parent().Find(".td-02 a").Text()
+		if boolUrl {
+			allData = append(allData, map[string]interface{}{"title":text, "url":"https://s.weibo.com"+url})
+		}
+	})
+	return allData
+}
+
+
 func SaveDataToJson(data interface{}) string {
 	Message := HotData{}
 	Message.Code = 0
@@ -208,7 +251,7 @@ func ExecGetData(spider Spider) {
 var group sync.WaitGroup
 
 func main() {
-	spider := Spider{DataType: "Github"}
+	spider := Spider{DataType: "WeiBo"}
 	start := time.Now()
 	group.Add(1)
 	go ExecGetData(spider)
